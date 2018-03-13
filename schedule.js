@@ -7,6 +7,10 @@ class Job {
         this.nextJob(null)
     }
 
+    start() {
+        this.jobFunc()
+    }
+
     setNext(job) {
         this.nextJob = job;
         job.preJob = this
@@ -21,163 +25,212 @@ class Job {
         return this.preJob
     }
 
-    remove() {
+    destory() {
         // job队列中的head 是个空Job，一直存在不会被删除
         let preJob = this.getPreJob()
         let nextJob = this.getNextJob()
-
         preJob.setNext(nextJob)
     }
 }
 
-const JobChainHead = new Job(null, function() {})
-
-let JobChainTail
-
 class CronTime {
-    constructor(cronTime) {
-        this.cronTime = cronTime
-        this.spans = cronTime.split(' ')
+    static InitFromDate(time) {
+        if(!time instanceof Date)
+            throw new Error('CronTime.init should receive Date!')
+        let now = new Date()
+        let nowInfo = {
+            second: now.getSeconds(),
+            minute: now.getMinutes(),
+            hour: now.getHours(),
+            day: now.getDate(),
+            month: now.getMonth() + 1,
+            week: now.getDay()
+        }
+        return new CronTime(time.getSeconds(), time.getMinutes(), time.getHours(), time.getDate(),
+            time.getMonth() + 1, time.getDay())
+    }
 
-        this.beginParseTime()
+    static InitFromInput(inputString) {
+        let spans = inputString.split(' ')
 
-        this.parseSecond()
+        this.beginParseInputTime(spans)
 
-        this.parseMinute()
+        let second = this.parseInputSecond()
+        let minute = this.parseInputMinute()
+        let hour = this.parseInputHour()
+        let day = this.parseInputDay()
+        let month = this.parseInputMonth()
+        let week = this.parseInputWeek()
 
-        this.parseHour()
+        return new CronTime(second, minute, hour, day, month, week)
+    }
 
-        this.parseDay()
-
-        this.parseMonth()
-
+    /**
+     * 两个CronTime之间的时间间隔，单位为毫秒
+     */
+    static Between(cronTime, dat) {
 
     }
 
-    beginParseTime() {
-        if(this.spans.length > 6 || this.spans.length < 5)
+    constructor(second, minute, hour, day, month, week) {
+        this.second = second
+        this.minute = minute
+        this.hour = hour
+        this.day = day
+        this.month = month
+        this.week = week
+    }
+
+    static beginParseInputTime(spans) {
+        if(spans.length > 6 || spans.length < 5)
             throw new Error('the format of cronTime should be like : "* * * * * *" ')
+        let spansString = spans.join('')
+        if(spansString === '*****' || spansString === '******')
+            throw new Error('should assign a field')
     }
 
-    parseSecond () {
-        let secondString = this.spans[0]
-        if(this.spans.length === 5 || secondString === '*' ) {
-            this.second = null
-            return this
+    static parseInputSecond (spans) {
+        let secondString = spans[0]
+        if(spans.length === 5 || secondString === '*' ) {
+            return
         }
 
         if(Number.isInteger(secondString * 1) && secondString * 1 < 60) {
-            this.second = secondString * 1
-            return this
+            return secondString * 1
         }
 
         throw new Error('error when parsing Second!')
     }
 
 
-    parseMinute () {
+    static parseInputMinute (spans) {
         let minuteString
-        if(this.spans.length === 5)
-            minuteString = this.spans[0]
+        if(spans.length === 5)
+            minuteString = spans[0]
         else
-            minuteString = this.spans[1]
+            minuteString = spans[1]
 
         if(minuteString === '*') {
-            this.minute = null
-            return this
+            return
         }
         if(Number.isInteger(minuteString * 1) && minuteString * 1 < 60 && minuteString * 1 >= 0) {
-            this.minute = minuteString * 1
-            return this
+            return minuteString * 1
         }
 
         throw new Error('error when parsing Minute!')
     }
 
-    parseHour () {
+    static parseInputHour (spans) {
         let hourString
-        if(this.spans.length === 5)
-            hourString = this.spans[1]
+        if(spans.length === 5)
+            hourString = spans[1]
         else
-            hourString = this.spans[2]
+            hourString = spans[2]
 
         if(hourString === '*') {
-            this.hour = null
-            return this
+            return
         }
         if(Number.isInteger(hourString * 1) && hourString * 1 < 24 && hourString * 1 >= 0) {
-            this.hour = hourString * 1
-            return this
+            return hourString * 1
         }
 
         throw new Error('error when parsing Hour!')
     }
 
-    parseDay (){
+    static parseInputDay (spans){
         let dayString
-        if(this.spans.length === 5)
-            dayString = this.spans[2]
+        if(spans.length === 5)
+            dayString = spans[2]
         else
-            dayString = this.spans[3]
+            dayString = spans[3]
 
         if(dayString === '*') {
-            this.day = null
-            return this
+            return
         }
 
         if(Number.isInteger(dayString * 1) && dayString * 1 < 31 && dayString * 1 > 0) {
-            this.day = dayString * 1
-            return this
+            return dayString * 1
         }
 
         throw new Error('error when parsing Day!')
     }
 
-    parseMonth (){
+    static parseInputMonth (spans){
         let monthString
-        if(this.spans.length === 5)
-            monthString = this.spans[3]
+        if(spans.length === 5)
+            monthString = spans[3]
         else
-            monthString = this.spans[4]
+            monthString = spans[4]
 
         if(monthString === '*') {
-            this.month = null
-            return this
+            return
         }
 
         if(Number.isInteger(monthString * 1) && monthString * 1 < 13 && monthString * 1 > 0) {
-            this.month = monthString * 1
-            return this
+            return monthString * 1
         }
 
         throw new Error('error when parsing Month!')
     }
 
-    parseWeek () {
+   static parseInputWeek (spans) {
         let weekString
-        if(this.spans.length === 5)
-            weekString = this.spans[4]
+        if(spans.length === 5)
+            weekString = spans[4]
         else
-            weekString = this.spans[5]
+            weekString = spans[5]
 
         if(weekString === '*') {
-            this.week = null
-            return this
+            return
         }
 
         if(Number.isInteger(weekString * 1) && weekString * 1 < 8 && weekString * 1 >=0) {
-            this.week = weekString * 1
-            return this
+            return weekString * 1
         }
 
         throw new Error('error when parsing Week!')
     }
 }
 
-const SheduleJob = function(cronTime, func) {
-    if(!JobChainTail) {
+const JobChainHead = new Job(null, function() {})
 
+let JobChain
+
+const FindNearestJobAndInterval = function() {
+
+    return {
+        interval: 90 * 1000,
+        job: new Job
     }
 }
 
-export default SheduleJob
+const WorkEndless = function(pendingJob, span) {
+    setTimeout(()=> {
+        pendingJob.start()
+        let {job, interval} = FindNearestJobAndInterval()
+        WorkEndless(job, interval)
+    }, span)
+}
+
+let IsInWork = false
+
+const ScheduleJob = function(cronTime, func) {
+    if(!JobChain) {
+        JobChain = JobChainHead
+    }
+
+    let cronTimeInstance = new CronTime(cronTime)
+    let jobInstance = new Job(JobChain, func, cronTimeInstance)
+
+    if(!IsInWork) {
+        IsInWork = true
+        let {job, interval} = FindNearestJobAndInterval()
+        WorkEndless(job, interval)
+    }
+
+
+    return jobInstance
+
+}
+
+export default ScheduleJob
