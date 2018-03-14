@@ -98,6 +98,8 @@ class CronTime {
         let longestTerm = this.findLongestTerm()
 
         interval += (this.second ? this.second-second : 0-second);
+        if(longestTerm === 'second')
+            return interval > 0 ? interval : interval + 60
         if(typeof this.minute !== 'undefined') {
             interval += (this.minute - minute) * 60
             if(longestTerm === 'minute')
@@ -275,10 +277,12 @@ const ScheduleJob = function(cronTime, func) {
 
     let cronTimeInstance = CronTime.InitFromInput(cronTime)
     let jobInstance = new Job(JobChain, func, cronTimeInstance)
+    JobChain = jobInstance
 
     if(!IsInWork) {
         IsInWork = true
         let {job, interval} = FindNearestJobAndInterval()
+        console.log(job, interval)
         WorkEndless(job, interval)
     }
 
