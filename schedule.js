@@ -3,8 +3,9 @@ class Job {
         this.jobFunc = jobFunc
         this.cronTime = cronTime
         this.preJob = preJob
-        this.preJob.nextJob = this
-        this.nextJob(null)
+        if(preJob)
+            this.preJob.nextJob = this
+        this.setNext(null)
     }
 
     start() {
@@ -13,7 +14,8 @@ class Job {
 
     setNext(job) {
         this.nextJob = job;
-        job.preJob = this
+        if(job)
+            job.preJob = this
         return this
     }
 
@@ -32,6 +34,9 @@ class Job {
         preJob.setNext(nextJob)
     }
 }
+const DaysInMonth = [
+    31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+]
 
 class CronTime {
     static InitFromDate(time) {
@@ -55,30 +60,65 @@ class CronTime {
 
         this.beginParseInputTime(spans)
 
-        let second = this.parseInputSecond()
-        let minute = this.parseInputMinute()
-        let hour = this.parseInputHour()
-        let day = this.parseInputDay()
-        let month = this.parseInputMonth()
-        let week = this.parseInputWeek()
+        let second = this.parseInputSecond(spans)
+        let minute = this.parseInputMinute(spans)
+        let hour = this.parseInputHour(spans)
+        let day = this.parseInputDay(spans)
+        let month = this.parseInputMonth(spans)
+        let week = this.parseInputWeek(spans)
 
-        return new CronTime(second, minute, hour, day, month, week)
+        return new CronTime(second, minute, hour, day, month, week, spans)
     }
 
+    findLongestTerm() {
+        const mapsSixArray = [ 'second', 'minute', 'hour', 'day', 'month', 'week']
+        let index = 0
+        if(this.spans.length===6) {
+            this.spans.forEach((s, i)=> {
+                if(s && s !== '*')
+                    index = i
+            })
+            return mapsSixArray[index]
+        }
+        this.spans.forEach((s, i)=> {
+            if(s && s !== '*')
+                index = i
+        })
+        return mapsSixArray[index + 1]
+    }
     /**
-     * 两个CronTime之间的时间间隔，单位为毫秒
+     * CronTime与某个时间之间的时间间隔，单位为毫秒
      */
-    static Between(cronTime, dat) {
+    between(date) {
+        let interval = 0
+        let hour = date.getHours()
+        let minute = date.getMinutes()
+        let second = date.getSeconds()
 
+        let longestTerm = this.findLongestTerm()
+
+        interval += (this.second ? this.second-second : 0-second);
+        if(typeof this.minute !== 'undefined') {
+            interval += (this.minute - minute) * 60
+            if(longestTerm === 'minute')
+                return interval > 0 ? interval : interval + 60 * 60
+        }
+        if(typeof this.hour !== 'undefined'){
+            interval += (this.hour - hour) * 3600
+            if(longestTerm === 'hour')
+                return interval > 0 ? interval : interval +  60 * 60 * 24
+        }
     }
 
-    constructor(second, minute, hour, day, month, week) {
+    constructor(second, minute, hour, day, month, week, spans) {
         this.second = second
         this.minute = minute
         this.hour = hour
         this.day = day
         this.month = month
         this.week = week
+
+        this.spans = spans
     }
 
     static beginParseInputTime(spans) {
@@ -197,10 +237,24 @@ const JobChainHead = new Job(null, function() {})
 let JobChain
 
 const FindNearestJobAndInterval = function() {
+    let next = JobChainHead;
+    let now = new Date()
+    let nearestTime, nearestJob
+    while(next = next.getNextJob()) {
+        let bet = next.cronTime.between(now)
+        if(!nearestTime) {
+            nearestTime = bet
+            nearestJob = next
+        }
+        if(bet < nearestTime) {
+            nearestTime = bet
+            nearestJob = next
+        }
+    }
 
     return {
-        interval: 90 * 1000,
-        job: new Job
+        interval: nearestTime * 1000,
+        job: nearestJob
     }
 }
 
@@ -219,7 +273,7 @@ const ScheduleJob = function(cronTime, func) {
         JobChain = JobChainHead
     }
 
-    let cronTimeInstance = new CronTime(cronTime)
+    let cronTimeInstance = CronTime.InitFromInput(cronTime)
     let jobInstance = new Job(JobChain, func, cronTimeInstance)
 
     if(!IsInWork) {
@@ -233,4 +287,4 @@ const ScheduleJob = function(cronTime, func) {
 
 }
 
-export default ScheduleJob
+module.exports.scheduleJob = ScheduleJob
