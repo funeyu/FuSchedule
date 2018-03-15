@@ -281,9 +281,11 @@ const ScheduleJob = function(cronTime, func) {
 
     if(!IsInWork) {
         IsInWork = true
-        let {job, interval} = FindNearestJobAndInterval()
-        console.log(job, interval)
-        WorkEndless(job, interval)
+        setTimeout(()=> {
+            let {job, interval} = FindNearestJobAndInterval()
+            WorkEndless(job, interval)
+        }, 0)
+
     }
 
 
