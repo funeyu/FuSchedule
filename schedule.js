@@ -34,6 +34,8 @@ class Job {
         preJob.setNext(nextJob)
     }
 }
+
+
 const DaysInMonth = [
     31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 ]
@@ -132,15 +134,23 @@ class CronTime {
     }
 
     static parseInputSecond (spans) {
+        // 注意 输入的秒能有范围：1-20、 1,3,5、 /5
         let secondString = spans[0]
         if(spans.length === 5 || secondString === '*' ) {
             return
         }
 
         if(Number.isInteger(secondString * 1) && secondString * 1 < 60) {
-            return secondString * 1
+            return { type: 'point', value: secondString * 1}
         }
 
+        let splices
+        // todo 校验输入是否正确
+        if((splices = secondString.split('-')) && splices.length === 2) {
+            return {type: 'range', min: splices[0] * 1, max: splices[1] * 1}
+        }
+        let
+        if()
         throw new Error('error when parsing Second!')
     }
 
