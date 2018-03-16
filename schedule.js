@@ -41,21 +41,6 @@ const DaysInMonth = [
 ]
 
 class CronTime {
-    static InitFromDate(time) {
-        if(!time instanceof Date)
-            throw new Error('CronTime.init should receive Date!')
-        let now = new Date()
-        let nowInfo = {
-            second: now.getSeconds(),
-            minute: now.getMinutes(),
-            hour: now.getHours(),
-            day: now.getDate(),
-            month: now.getMonth() + 1,
-            week: now.getDay()
-        }
-        return new CronTime(time.getSeconds(), time.getMinutes(), time.getHours(), time.getDate(),
-            time.getMonth() + 1, time.getDay())
-    }
 
     static InitFromInput(inputString) {
         let spans = inputString.split(' ')
@@ -99,11 +84,35 @@ class CronTime {
 
         let longestTerm = this.findLongestTerm()
 
-        interval += (this.second ? this.second-second : 0-second);
+        let nearestSecond
+        if(typeof this.second !== 'undefined') {
+            if(this.second.type === 'point') {
+                nearestSecond = this.second.value
+            }
+            if(this.second.type === 'range') {
+                if(this.second.min <= second && this.second.max >= second)
+                    nearestSecond = second
+                else
+                    nearestSecond = this.second.min
+            }
+            interval += nearestSecond - second
+        }
         if(longestTerm === 'second')
+            if(interval === 0)
+                return 1
             return interval > 0 ? interval : interval + 60
+
+        let nearestMinute
         if(typeof this.minute !== 'undefined') {
-            interval += (this.minute - minute) * 60
+            if(this.minute.type === 'point') {
+                nearestMinute = this.minute.value
+            } else if(this.minute.type === 'range') {
+                if(minute >=this.minute.min && minute <= this.minute.max)
+                    nearestMinute = minute
+                else
+                    nearestMinute = this.minute.min
+            }
+            interval += (nearestMinute - minute) * 60
             if(longestTerm === 'minute')
                 return interval > 0 ? interval : interval + 60 * 60
         }
@@ -149,8 +158,17 @@ class CronTime {
         if((splices = secondString.split('-')) && splices.length === 2) {
             return {type: 'range', min: splices[0] * 1, max: splices[1] * 1}
         }
-        let
-        if()
+        let dots
+        // todo 校验输入是否正确
+        if((dots = secondString.split(',')) && dots.length > 1) {
+            return {type: 'dot', value: dots.filter(d=> d).map(d=> d * 1)}
+        }
+
+        let every
+        // todo 校验输入是否正确
+        if((every = secondString.split('\/')) && every.length === 2) {
+            return {type: 'every', value: every[1] * 1}
+        }
         throw new Error('error when parsing Second!')
     }
 
@@ -166,9 +184,24 @@ class CronTime {
             return
         }
         if(Number.isInteger(minuteString * 1) && minuteString * 1 < 60 && minuteString * 1 >= 0) {
-            return minuteString * 1
+            return {type: 'point', value: minuteString * 1}
+        }
+        let splices
+        // todo 校验输入是否正确
+        if((splices = minuteString.split('-')) && splices.length === 2) {
+            return {type: 'range', min: splices[0] * 1, max: splices[1] * 1}
+        }
+        let dots
+        // todo 校验输入是否正确
+        if((dots = minuteString.split(',')) && dots.length > 1) {
+            return {type: 'dot', value: dots.filter(d=> d).map(d=> d * 1)}
         }
 
+        let every
+        // todo 校验输入是否正确
+        if((every = minuteString.split('\/')) && every.length === 2) {
+            return {type: 'every', value: every[1] * 1}
+        }
         throw new Error('error when parsing Minute!')
     }
 
@@ -183,7 +216,23 @@ class CronTime {
             return
         }
         if(Number.isInteger(hourString * 1) && hourString * 1 < 24 && hourString * 1 >= 0) {
-            return hourString * 1
+            return {type: 'point', value: hourString * 1}
+        }
+        let splices
+        // todo 校验输入是否正确
+        if((splices = hourString.split('-')) && splices.length === 2) {
+            return {type: 'range', min: splices[0] * 1, max: splices[1] * 1}
+        }
+        let dots
+        // todo 校验输入是否正确
+        if((dots = hourString.split(',')) && dots.length > 1) {
+            return {type: 'dot', value: dots.filter(d=> d).map(d=> d * 1)}
+        }
+
+        let every
+        // todo 校验输入是否正确
+        if((every = hourString.split('\/')) && every.length === 2) {
+            return {type: 'every', value: every[1] * 1}
         }
 
         throw new Error('error when parsing Hour!')
@@ -256,11 +305,16 @@ const FindNearestJobAndInterval = function() {
         let bet = next.cronTime.between(now)
         if(!nearestTime) {
             nearestTime = bet
-            nearestJob = next
+            nearestJob = [next]
+            continue
         }
         if(bet < nearestTime) {
             nearestTime = bet
-            nearestJob = next
+            nearestJob = [next]
+            continue
+        } else if(bet === nearestTime) {
+            nearestTime = bet
+            nearestJob.push(next)
         }
     }
 
@@ -272,7 +326,7 @@ const FindNearestJobAndInterval = function() {
 
 const WorkEndless = function(pendingJob, span) {
     setTimeout(()=> {
-        pendingJob.start()
+        pendingJob.forEach(job=> job.start())
         let {job, interval} = FindNearestJobAndInterval()
         WorkEndless(job, interval)
     }, span)
@@ -298,9 +352,24 @@ const ScheduleJob = function(cronTime, func) {
 
     }
 
-
     return jobInstance
 
 }
 
+const DaysInFeb = function(year) {
+    if(year % 100 === 0) {
+        if(year % 4 === 0) {
+            return 29
+        } else {
+            return 28
+        }
+    } else if(year % 4 === 0) {
+        return 29
+    } else {
+        return 28
+    }
+}
+
 module.exports.scheduleJob = ScheduleJob
+
+module.exports.CronTime = CronTime
