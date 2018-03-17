@@ -90,7 +90,7 @@ class CronTime {
                 nearestSecond = this.second.value
             }
             if(this.second.type === 'range') {
-                if(this.second.min <= second && this.second.max >= second)
+                if(this.second.min <= second && this.second.max > second)
                     nearestSecond = second + 1
                 else
                     nearestSecond = this.second.min

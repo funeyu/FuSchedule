@@ -16,8 +16,8 @@ var ct = CronTime.InitFromInput('1-10 * * * * *')
 var testDate = new Date(Date.parse('2018-10-11 12:00:08'))
 console.log(ct.between(testDate))
 
-var every = schedule.scheduleJob('1-20 * * * * *', function() {
-    console.log('here')
+var every = schedule.scheduleJob('2-5 * * * * *', function() {
+    console.log('here:', new Date().getSeconds())
 })
 
 // 测试destory方法
