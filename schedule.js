@@ -91,15 +91,15 @@ class CronTime {
             }
             if(this.second.type === 'range') {
                 if(this.second.min <= second && this.second.max >= second)
-                    nearestSecond = second
+                    nearestSecond = second + 1
                 else
                     nearestSecond = this.second.min
+
             }
             interval += nearestSecond - second
         }
+
         if(longestTerm === 'second')
-            if(interval === 0)
-                return 1
             return interval > 0 ? interval : interval + 60
 
         let nearestMinute
